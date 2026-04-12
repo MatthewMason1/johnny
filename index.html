@@ -49,8 +49,8 @@
 
     #bunny {
       position: absolute;
-      width: 100px;
-      height: 100px;
+      width: 140px;
+      height: 140px;
       image-rendering: pixelated;
       z-index: 4;
     }
@@ -74,7 +74,7 @@
     <img id="player" src="johnnyidle.gif">
     <img id="building" src="building_1.png">
     <img id="building2" src="building_2.png">
-    <img id="bunny" src="bunny.png">
+    <img id="bunny" src="bunnyidle.gif">
     <img id="pencil" src="pencil_grounded.png">
   </div>
 </div>
@@ -95,15 +95,13 @@ const speed = 6;
 
 const buildingX = -600;
 const buildingY = 20;
-const buildingW = 550;
-const buildingH = 450;
+const buildingW = 500;
+const buildingH = 350;
 
-const building2X = buildingX - 650;
+const building2X = buildingX - 700;
 const building2Y = buildingY;
 const building2W = 550;
-const building2H = 450;
-
-const roofHeight = 60;
+const building2H = 670;
 
 const pencilX = 650;
 const pencilY = 500;
@@ -113,7 +111,9 @@ let camY = 0;
 
 const keys = {};
 
-// animations
+// =====================
+// PLAYER ANIMATIONS
+// =====================
 const gifs = {
   idle: "johnnyidle.gif",
   up: "johnnywalk_up.gif",
@@ -130,44 +130,39 @@ function setAnim(anim) {
   currentAnim = anim;
 }
 
-// input
-document.addEventListener("keydown", e => {
-  keys[e.key.toLowerCase()] = true;
-});
-
-document.addEventListener("keyup", e => {
-  keys[e.key.toLowerCase()] = false;
-});
+// =====================
+// INPUT
+// =====================
+document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
 // =====================
-// COLLISION (FIXED + BUILDING 2 OFFSET)
+// SIMPLE COLLISION (WORKS)
 // =====================
-function checkBuilding(nx, ny, bx, by, bw, bh, bottomOffset = 20) {
+
+// 🔥 ONE SOURCE OF TRUTH
+
+function checkBuilding(nx, ny, bx, by, bw, bh, offset) {
   const footX = nx + 70;
   const footY = ny + 130;
 
-  const hitTop =
+  return (
     footX > bx &&
     footX < bx + bw &&
-    footY > by &&
-    footY < by + roofHeight;
-
-  const hitBottom =
-    footX > bx &&
-    footX < bx + bw &&
-    footY > by + bh - bottomOffset &&
-    footY < by + bh + 20;
-
-  return hitTop || hitBottom;
+    footY > by + bh - offset &&
+    footY < by + bh + 40
+  );
 }
 
 function isColliding(nx, ny) {
   return (
-    checkBuilding(nx, ny, buildingX, buildingY, buildingW, buildingH, 24) ||
-    checkBuilding(nx, ny, building2X, building2Y, building2W, building2H, 50)
+    // building 1 (already good)
+    checkBuilding(nx, ny, buildingX, buildingY, buildingW, buildingH, 30) ||
+
+    // 🔥 building 2 (same system, just bigger offset)
+    checkBuilding(nx, ny, building2X, building2Y, building2W, building2H, 100)
   );
 }
-
 // =====================
 // PLACE OBJECTS
 // =====================
@@ -176,12 +171,10 @@ building.style.top = buildingY + "px";
 building.style.width = buildingW + "px";
 building.style.height = buildingH + "px";
 
-if (building2) {
-  building2.style.left = building2X + "px";
-  building2.style.top = building2Y + "px";
-  building2.style.width = building2W + "px";
-  building2.style.height = building2H + "px";
-}
+building2.style.left = building2X + "px";
+building2.style.top = building2Y + "px";
+building2.style.width = building2W + "px";
+building2.style.height = building2H + "px";
 
 pencil.style.left = pencilX + "px";
 pencil.style.top = pencilY + "px";
@@ -201,6 +194,23 @@ const bunnySpeed = 1.5;
 const fleeSpeed = 4;
 
 let bunnyTimer = 0;
+
+// animations
+const bunnyGifs = {
+  idle: "bunnyidle.gif",
+  up: "bunnywalk_up.gif",
+  down: "bunnywalk_down.gif",
+  left: "bunnywalk_left.gif",
+  right: "bunnywalk_right.gif"
+};
+
+let bunnyAnim = "idle";
+
+function setBunnyAnim(anim) {
+  if (bunnyAnim === anim) return;
+  bunny.src = bunnyGifs[anim];
+  bunnyAnim = anim;
+}
 
 function bunnyNearBuilding(nx, ny) {
   const padding = 80;
@@ -231,7 +241,7 @@ function update() {
   if (keys["a"]) { dx -= 1; anim = "left"; }
   if (keys["d"]) { dx += 1; anim = "right"; }
 
-  if (dx !== 0 || dy !== 0) {
+  if (dx || dy) {
     const len = Math.hypot(dx, dy);
     dx = (dx / len) * speed;
     dy = (dy / len) * speed;
@@ -247,21 +257,29 @@ function update() {
   player.style.left = x + "px";
   player.style.top = y + "px";
 
-  // =====================
-  // DEPTH (FIXED SAFE VERSION)
-  // =====================
-  const footY = y + 130;
+// =====================
+// DEPTH (AS REQUESTED)
+// =====================
 
-  let z = 1;
+// BUILDING 1 uses y + 130
+const footY1 = y + 130;
 
-  const depthCheck = (bx, by, bw, bh) => {
-    if (footY > by + bh) z = 6;
-  };
+// BUILDING 2 uses y - 130
+const footY2 = y - 50;
 
-  depthCheck(buildingX, buildingY, buildingW, buildingH);
-  depthCheck(building2X, building2Y, building2W, building2H);
+let z = 3;
 
-  player.style.zIndex = z;
+// building 1
+if (footY1 > buildingY + buildingH) {
+  z = 6;
+}
+// building 2
+if (footY1 > buildingY + buildingH) {
+  z = 6;
+}
+
+player.style.zIndex = z;
+// IMPORTANT: only apply if you're actually inside X range
 
   // camera
   const targetCamX = x - window.innerWidth / 2 + 70;
@@ -294,6 +312,20 @@ function update() {
   let nextX = bx + bdx;
   let nextY = by + bdy;
 
+  // animation
+  let bAnim = "idle";
+
+  if (Math.abs(bdx) > Math.abs(bdy)) {
+    bAnim = bdx > 0 ? "right" : "left";
+  } else {
+    bAnim = bdy > 0 ? "down" : "up";
+  }
+
+  if (Math.hypot(bdx, bdy) < 0.2) bAnim = "idle";
+
+  setBunnyAnim(bAnim);
+
+  // movement
   if (!bunnyNearBuilding(nextX, by)) bx = nextX;
   else bdx *= -1;
 
@@ -308,6 +340,5 @@ function update() {
 
 update();
 </script>
-
 </body>
 </html>
