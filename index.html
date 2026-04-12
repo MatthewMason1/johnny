@@ -32,13 +32,20 @@
       z-index: 2;
     }
 
-    #wall {
-      position: absolute;
-      width: 170px;
-      height: 170px;
-      image-rendering: pixelated;
-      z-index: 3;
-    }
+    #building {
+  position: absolute;
+  width: 220px;
+  height: 150px;
+  image-rendering: pixelated;
+  image-rendering: pixelated;
+  z-index: 3;
+}
+
+#building2 {
+  position: absolute;
+  image-rendering: pixelated;
+  z-index: 3;
+}
 
     #bunny {
       position: absolute;
@@ -65,7 +72,8 @@
 <div id="camera">
   <div id="world">
     <img id="player" src="johnnyidle.gif">
-    <img id="wall" src="testwall.png">
+    <img id="building" src="building_1.png">
+    <img id="building2" src="building_2.png">
     <img id="bunny" src="bunny.png">
     <img id="pencil" src="pencil_grounded.png">
   </div>
@@ -73,30 +81,36 @@
 
 <script>
 const player = document.getElementById("player");
-const wall = document.getElementById("wall");
+const building = document.getElementById("building");
+const building2 = document.getElementById("building2");
 const world = document.getElementById("world");
 const pencil = document.getElementById("pencil");
 
 // =====================
-// WORLD SETTINGS (UNCHANGED)
+// WORLD SETTINGS
 // =====================
 let x = 100;
 let y = 100;
 const speed = 6;
 
-const wallX = 400;
-const wallY = 200;
-const wallW = 200;
-const wallH = 200;
-// ✏️ pencil position (NEW)
+const buildingX = -600;
+const buildingY = 20;
+const buildingW = 550;
+const buildingH = 450;
+
+const building2X = buildingX - 650;
+const building2Y = buildingY;
+const building2W = 550;
+const building2H = 450;
+
+const roofHeight = 60;
+
 const pencilX = 650;
 const pencilY = 500;
 
-// camera
 let camX = 0;
 let camY = 0;
 
-// input
 const keys = {};
 
 // animations
@@ -125,49 +139,56 @@ document.addEventListener("keyup", e => {
   keys[e.key.toLowerCase()] = false;
 });
 
-// collision (UNCHANGED)
+// =====================
+// COLLISION (FIXED + BUILDING 2 OFFSET)
+// =====================
+function checkBuilding(nx, ny, bx, by, bw, bh, bottomOffset = 20) {
+  const footX = nx + 70;
+  const footY = ny + 130;
+
+  const hitTop =
+    footX > bx &&
+    footX < bx + bw &&
+    footY > by &&
+    footY < by + roofHeight;
+
+  const hitBottom =
+    footX > bx &&
+    footX < bx + bw &&
+    footY > by + bh - bottomOffset &&
+    footY < by + bh + 20;
+
+  return hitTop || hitBottom;
+}
+
 function isColliding(nx, ny) {
-  const padding = 20;
-
-  const p = {
-    left: nx + 50 - padding,
-    right: nx + 40 - padding,
-    top: ny + 40 - padding,
-    bottom: ny + 70 - padding
-  };
-
-  const w = {
-    left: wallX,
-    right: wallX + wallW,
-    top: wallY,
-    bottom: wallY + wallH
-  };
-
-  return !(
-    p.right < w.left ||
-    p.left > w.right ||
-    p.bottom < w.top ||
-    p.top > w.bottom
+  return (
+    checkBuilding(nx, ny, buildingX, buildingY, buildingW, buildingH, 24) ||
+    checkBuilding(nx, ny, building2X, building2Y, building2W, building2H, 50)
   );
 }
 
-// wall placement
-wall.style.left = wallX + "px";
-wall.style.top = wallY + "px";
-wall.style.width = wallW + "px";
-wall.style.height = wallH + "px";
+// =====================
+// PLACE OBJECTS
+// =====================
+building.style.left = buildingX + "px";
+building.style.top = buildingY + "px";
+building.style.width = buildingW + "px";
+building.style.height = buildingH + "px";
 
-// ✏️ pencil placement (NEW)
+if (building2) {
+  building2.style.left = building2X + "px";
+  building2.style.top = building2Y + "px";
+  building2.style.width = building2W + "px";
+  building2.style.height = building2H + "px";
+}
+
 pencil.style.left = pencilX + "px";
 pencil.style.top = pencilY + "px";
 
-
-
 // =====================
-// 🐰 BUNNY SYSTEM (FIXED ONLY)
+// 🐰 BUNNY
 // =====================
-
-// IMPORTANT: defined ONCE (not inside update)
 const bunny = document.getElementById("bunny");
 
 let bx = 700;
@@ -181,14 +202,18 @@ const fleeSpeed = 4;
 
 let bunnyTimer = 0;
 
-function bunnyNearWall(nx, ny) {
+function bunnyNearBuilding(nx, ny) {
   const padding = 80;
 
+  const check = (bx, by, bw, bh) =>
+    nx > bx - padding &&
+    nx < bx + bw + padding &&
+    ny > by - padding &&
+    ny < by + bh + padding;
+
   return (
-    nx > wallX - padding &&
-    nx < wallX + wallW + padding &&
-    ny > wallY - padding &&
-    ny < wallY + wallH + padding
+    check(buildingX, buildingY, buildingW, buildingH) ||
+    check(building2X, building2Y, building2W, building2H)
   );
 }
 
@@ -197,9 +222,6 @@ function bunnyNearWall(nx, ny) {
 // =====================
 function update() {
 
-  // =====================
-  // JOHNNY (UNCHANGED LOGIC)
-  // =====================
   let dx = 0;
   let dy = 0;
   let anim = "idle";
@@ -225,14 +247,23 @@ function update() {
   player.style.left = x + "px";
   player.style.top = y + "px";
 
-  // depth (UNCHANGED)
-  if (y + 140 < wallY + 100) {
-    player.style.zIndex = 2;
-  } else {
-    player.style.zIndex = 6;
-  }
+  // =====================
+  // DEPTH (FIXED SAFE VERSION)
+  // =====================
+  const footY = y + 130;
 
-  // camera (UNCHANGED)
+  let z = 1;
+
+  const depthCheck = (bx, by, bw, bh) => {
+    if (footY > by + bh) z = 6;
+  };
+
+  depthCheck(buildingX, buildingY, buildingW, buildingH);
+  depthCheck(building2X, building2Y, building2W, building2H);
+
+  player.style.zIndex = z;
+
+  // camera
   const targetCamX = x - window.innerWidth / 2 + 70;
   const targetCamY = y - window.innerHeight / 2 + 70;
 
@@ -242,21 +273,18 @@ function update() {
   world.style.transform = `translate(${-camX}px, ${-camY}px)`;
 
   // =====================
-  // 🐰 BUNNY AI (FIXED + WORKING)
+  // 🐰 BUNNY AI
   // =====================
-
   bunnyTimer++;
 
   const distToPlayer = Math.hypot(x - bx, y - by);
 
-  // random movement
   if (bunnyTimer % 80 === 0 && distToPlayer > 180) {
     const angle = Math.random() * Math.PI * 2;
     bdx = Math.cos(angle) * bunnySpeed;
     bdy = Math.sin(angle) * bunnySpeed;
   }
 
-  // flee player
   if (distToPlayer < 180) {
     const angle = Math.atan2(by - y, bx - x);
     bdx = Math.cos(angle) * fleeSpeed;
@@ -266,11 +294,10 @@ function update() {
   let nextX = bx + bdx;
   let nextY = by + bdy;
 
-  // wall avoidance
-  if (!bunnyNearWall(nextX, by)) bx = nextX;
+  if (!bunnyNearBuilding(nextX, by)) bx = nextX;
   else bdx *= -1;
 
-  if (!bunnyNearWall(bx, nextY)) by = nextY;
+  if (!bunnyNearBuilding(bx, nextY)) by = nextY;
   else bdy *= -1;
 
   bunny.style.left = bx + "px";
