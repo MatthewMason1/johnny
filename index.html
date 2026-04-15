@@ -34,8 +34,6 @@
 
     #building {
       position: absolute;
-      width: 220px;
-      height: 150px;
       image-rendering: pixelated;
       z-index: 3;
     }
@@ -75,15 +73,14 @@ const building = document.getElementById("building");
 const world = document.getElementById("world");
 const pencil = document.getElementById("pencil");
 
-// =====================
 let x = 100;
 let y = 100;
 const speed = 6;
 
 const buildingX = -600;
 const buildingY = 20;
-const buildingW = 500;
-const buildingH = 350;
+const buildingW = 600;
+const buildingH = 430;
 
 const pencilX = 650;
 const pencilY = 500;
@@ -93,7 +90,6 @@ let camY = 0;
 
 const keys = {};
 
-// =====================
 const gifs = {
   idle: "johnnyidle.gif",
   up: "johnnywalk_up.gif",
@@ -110,7 +106,7 @@ function setAnim(anim) {
   currentAnim = anim;
 }
 
-// =====================
+
 document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
 document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
@@ -130,7 +126,7 @@ function isColliding(nx, ny) {
   return checkBuilding(nx, ny, buildingX, buildingY, buildingW, buildingH, 30);
 }
 
-// =====================
+
 building.style.left = buildingX + "px";
 building.style.top = buildingY + "px";
 building.style.width = buildingW + "px";
@@ -139,9 +135,6 @@ building.style.height = buildingH + "px";
 pencil.style.left = pencilX + "px";
 pencil.style.top = pencilY + "px";
 
-// =====================
-// 🐰 BUNNY
-// =====================
 const bunny = document.getElementById("bunny");
 
 let bx = 700;
@@ -182,7 +175,6 @@ function bunnyNearBuilding(nx, ny) {
   );
 }
 
-// =====================
 function update() {
 
   let dx = 0;
@@ -210,7 +202,6 @@ function update() {
   player.style.left = x + "px";
   player.style.top = y + "px";
 
-  // depth (ONLY building 1 now)
   const footY = y + 130;
   let z = 3;
 
@@ -220,7 +211,7 @@ function update() {
 
   player.style.zIndex = z;
 
-  // camera
+  /*camera*/
   const targetCamX = x - window.innerWidth / 2 + 70;
   const targetCamY = y - window.innerHeight / 2 + 70;
 
@@ -229,9 +220,6 @@ function update() {
 
   world.style.transform = `translate(${-camX}px, ${-camY}px)`;
 
-  // =====================
-  // 🐰 BUNNY AI
-  // =====================
   bunnyTimer++;
 
   const distToPlayer = Math.hypot(x - bx, y - by);
@@ -250,7 +238,6 @@ function update() {
 
   let nextX = bx + bdx;
   let nextY = by + bdy;
-
   let bAnim = "idle";
 
   if (Math.abs(bdx) > Math.abs(bdy)) {
