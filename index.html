@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>WASD Movement</title>
+  <title>Johnny Demo</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+</head>
 
   <style>
     body {
@@ -53,6 +55,18 @@
       image-rendering: pixelated;
       z-index: 3;
     }
+
+  #pencilHint {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    pointer-events: none;
+    opacity: 0;
+    image-rendering: pixelated;
+    transform: translateY(10px) scale(0.9);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 10;
+  }
   </style>
 </head>
 
@@ -64,6 +78,7 @@
     <img id="building" src="building_1.png">
     <img id="bunny" src="bunnyidle.gif">
     <img id="pencil" src="pencil_grounded.png">
+    <img id="pencilHint" src="pressf.gif">
   </div>
 </div>
 
@@ -72,21 +87,27 @@ const player = document.getElementById("player");
 const building = document.getElementById("building");
 const world = document.getElementById("world");
 const pencil = document.getElementById("pencil");
+const pencilHint = document.getElementById("pencilHint");
 
 let x = 100;
 let y = 100;
 const speed = 6;
+
 
 const buildingX = -600;
 const buildingY = 20;
 const buildingW = 600;
 const buildingH = 430;
 
+
 const pencilX = 650;
 const pencilY = 500;
 
 let camX = 0;
 let camY = 0;
+let spaceHeld = false;
+let zoom = 1;
+let nearPencil = false;
 
 const keys = {};
 
@@ -109,6 +130,21 @@ function setAnim(anim) {
 
 document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
 document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+document.addEventListener("keydown", e => {
+  keys[e.key.toLowerCase()] = true;
+  if (e.code === "Space") spaceHeld = true;
+});
+
+document.addEventListener("keyup", e => {
+  keys[e.key.toLowerCase()] = false;
+  if (e.code === "Space") spaceHeld = false;
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key.toLowerCase() === "f" && nearPencil) {
+    alert("grabbed pencil!");
+  }
+});
 
 function checkBuilding(nx, ny, bx, by, bw, bh, offset) {
   const footX = nx + 70;
@@ -134,6 +170,9 @@ building.style.height = buildingH + "px";
 
 pencil.style.left = pencilX + "px";
 pencil.style.top = pencilY + "px";
+
+pencilHint.style.left = (pencilX - 30) + "px";
+pencilHint.style.top = (pencilY - 100) + "px";
 
 const bunny = document.getElementById("bunny");
 
@@ -210,16 +249,58 @@ function update() {
   }
 
   player.style.zIndex = z;
+const distToPencil = Math.hypot(x - pencilX, y - pencilY);
 
-  /*camera*/
-  const targetCamX = x - window.innerWidth / 2 + 70;
-  const targetCamY = y - window.innerHeight / 2 + 70;
+nearPencil = distToPencil < 180;
 
-  camX += (targetCamX - camX) * 0.08;
-  camY += (targetCamY - camY) * 0.08;
+if (nearPencil) {
+  pencilHint.style.opacity = "1";
+  pencilHint.style.transform = "translateY(0px) scale(1)";
+} else {
+  pencilHint.style.opacity = "0";
+  pencilHint.style.transform = "translateY(10px) scale(0.9)";
+}
 
-  world.style.transform = `translate(${-camX}px, ${-camY}px)`;
+/* camera */
 
+let targetCamX, targetCamY;
+let targetZoom = 1;
+
+if (spaceHeld) {
+
+  const midX = (x + bx) / 2;
+  const midY = (y + by) / 2;
+
+  const dist = Math.hypot(x - bx, y - by);
+
+  targetCamX = midX - window.innerWidth / 2;
+  targetCamY = midY - window.innerHeight / 2;
+
+  // slight pullback so both fit better
+  targetCamX -= (dist > 400 ? dist * 0.15 : 0);
+  targetCamY -= (dist > 400 ? dist * 0.05 : 0);
+
+  // VERY small zoom out (key fix)
+  targetZoom = Math.max(0.92, 1 - dist / 4000);
+
+} else {
+
+  targetCamX = x - window.innerWidth / 2 + 70;
+  targetCamY = y - window.innerHeight / 2 + 70;
+
+  targetZoom = 1;
+}
+
+// smooth camera movement
+camX += (targetCamX - camX) * 0.06;
+camY += (targetCamY - camY) * 0.06;
+
+// smooth zoom (important)
+zoom += (targetZoom - zoom) * 0.05;
+
+// apply transform
+world.style.transform =
+  `translate(${-camX}px, ${-camY}px) scale(${zoom})`;
   bunnyTimer++;
 
   const distToPlayer = Math.hypot(x - bx, y - by);
